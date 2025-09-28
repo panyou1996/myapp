@@ -1,155 +1,99 @@
-# TaskFlow Flutter Development Plan
+# TaskFlow Flutter Development Plan (Revision 3)
 
-This document outlines the step-by-step plan to build the TaskFlow application using Flutter, based on the detailed blueprint provided in `plan.md`.
-
----
-
-## Phase 1: Foundation & Core Architecture
-
-### Step 1.1: Project Setup
-- **Task**: Initialize a new Flutter project.
-- **Actions**:
-    - Run `flutter create taskflow`.
-    - Clean up the default counter app code.
-    - Set up the folder structure: `lib/models`, `lib/providers`, `lib/screens`, `lib/widgets`, `lib/services`.
-
-### Step 1.2: Dependencies
-- **Task**: Add essential packages to `pubspec.yaml`.
-- **Packages**:
-    - `provider`: For state management.
-    - `shared_preferences`: For local data persistence.
-    - `go_router`: For declarative navigation.
-    - `google_fonts`: For custom typography.
-    - `lucide_flutter` (or similar): For icons.
-    - `uuid`: For generating unique IDs.
-
-### Step 1.3: Data Models
-- **Task**: Create Dart classes for all data models defined in `plan.md`.
-- **Files**:
-    - `lib/models/task.dart`: `Task`, `Subtask`.
-    - `lib/models/journal_post.dart`: `JournalPost`, `Author`.
-    - `lib/models/task_list.dart`: `TaskList`.
-- **Details**: Implement `toJson` and `fromJson` methods for easy serialization.
-
-### Step 1.4: Persistence Layer
-- **Task**: Implement a service to handle saving and loading data from `shared_preferences`.
-- **File**: `lib/services/persistence_service.dart`.
-- **Logic**: Create a generic service that can handle different data types and mimics the platform-aware logic from the blueprint.
+This document provides a highly-detailed, "pixel-perfect" plan to build the TaskFlow application. This revision focuses on deeply integrating the visual style and animation choreography from the reference materials (`ref` folder) with the specific data models and application logic defined in `plan.md`.
 
 ---
 
-## Phase 2: State Management & UI Shell
+## Phase 1 & 2: Foundation & State Management
 
-### Step 2.1: State Management with Provider
-- **Task**: Set up `ChangeNotifierProvider`s for the core application data.
-- **Files**:
-    - `lib/providers/task_provider.dart`: Manages `tasks`.
-    - `lib/providers/journal_provider.dart`: Manages `journalPosts`.
-    - `lib/providers/list_provider.dart`: Manages `taskLists`.
-    - `lib/providers/user_provider.dart`: Manages `currentUser`.
-    - `lib/providers/theme_provider.dart`: Manages UI theme settings.
-- **Integration**: Wrap the `MaterialApp` with these providers in `lib/main.dart`.
-
-### Step 2.2: Routing & Navigation Shell
-- **Task**: Configure `go_router` and build the main layout with the bottom navigation bar.
-- **Files**:
-    - `lib/router.dart`: Define all application routes (`/`, `/today`, `/inbox`, etc.).
-    - `lib/widgets/main_layout.dart`: The main screen wrapper containing the `BottomNavigationBar` and the FAB.
-- **Details**: Implement the "speed dial" FAB for adding new tasks and journal entries.
+_(These phases remain unchanged as they form the necessary backend and architectural backbone for the detailed UI work to come.)_
 
 ---
 
 ## Phase 3: Feature Implementation - Core Task Management
 
 ### Step 3.1: Authentication Flow
-- **Task**: Build the login, registration, and profile setup screens.
-- **Screens**:
-    - `lib/screens/login_screen.dart`.
-    - `lib/screens/register_screen.dart`.
-    - `lib/screens/set_profile_screen.dart`.
-- **Logic**: Implement avatar selection (random, AI-generated, upload).
+_(Unchanged)_
 
-### Step 3.2: "My Day" Timeline View
-- **Task**: Implement the main dashboard with the timeline. This is the most complex UI component.
-- **Screen**: `lib/screens/today_screen.dart`.
-- **Widgets**:
-    - `lib/widgets/timeline_item.dart`: The core visual component for a single task on the timeline.
-    - `lib/widgets/task_card.dart`: A compact task card for the timeline.
-- **Logic**:
-    - Implement `buildTimelineItems` utility in Dart.
-    - Handle rendering of "Leftover" and "Done" groups.
+### Step 3.2: "My Day" Timeline View (Pixel-Perfect Revision)
+
+This section is completely revised to serve as the definitive blueprint for the "My Day" screen UI.
+
+#### 3.2.1: The Timeline Canvas (`timeline_view.dart`)
+
+This will be a stateful widget that builds the entire scrollable timeline.
+
+- **Layout:** It will use a `Stack` to layer the timeline painter in the background and a `ListView.builder` (or `CustomScrollView`) for the tasks.
+- **Background Painter (`timeline_painter.dart`):**
+    - A `CustomPainter` will be responsible for drawing the non-interactive elements.
+    - **Vertical Line:** A single, centered, 1px wide, light gray line will be drawn for the entire height of the view.
+    - **Hour Markers:** For each hour in the workday (e.g., 7 AM to 9 PM), a text label (e.g., "9 AM") will be rendered to the *left* of the vertical line. The font will be small and gray.
+    - **Current Time Indicator:** A 1px high, solid red horizontal line will be drawn across the entire width of the view, positioned based on the current system time. It will have a small, solid red circle (4px diameter) where it intersects the vertical timeline. This indicator must update in real-time without requiring a full screen rebuild.
+
+#### 3.2.2: The Task Card Widget (`task_card.dart`)
+
+This is the central UI element, representing a single `Task`. It will be a stateful widget to manage its own complex animations.
+
+- **Card Styling:**
+    - The card's general style will be driven by the `cardStyle` setting from your `theme_provider.dart`. For example, `'default'` will have a soft drop shadow, `'bordered'` will have a 1px outline, and `'flat'` will have neither.
+    - It will have rounded corners (approx. 8-12px radius).
+
+- **Positioning & Sizing:**
+    - **Vertical Position:** The card's top edge will be precisely aligned with its `Task.startTime` on the timeline.
+    - **Height:** The card's height will be directly proportional to its `Task.duration` in minutes. A mapping will be established (e.g., 1 minute = 2 logical pixels) to calculate the exact height. If `duration` is null, it will have a fixed, default height.
+
+- **Internal Layout (Pixel-Perfect Mapping to `plan.md`):**
+    - **Checkbox (Right Side):** A circular checkbox on the far right. Tapping this toggles the `Task.isCompleted` boolean and triggers the completion animation (see Phase 6).
+    - **Color Indicator (Left Side):** A small, solid circle (approx. 8px diameter) will be displayed on the far left. Its color will be directly bound to the `color` property of the `TaskList` associated with the `Task.listId`.
+    - **Text Content (Center):**
+        - **Title:** The `Task.title` will be the primary text, with a bold font weight.
+        - **Time & Icon:** Below the title, in a smaller, lighter gray font, will be a row containing:
+            - The formatted time string (e.g., "10:00 AM - 11:30 AM"), derived from `Task.startTime` and `Task.duration`.
+            - The icon corresponding to the `TaskList.icon` string, rendered using a package like `lucide_flutter`.
+    - **Subtasks:** If `Task.subtasks` exist, a small indicator (e.g., "3/5") will appear below the time string.
+
+#### 3.2.3: Layout Logic
+
+- **Non-Timed Tasks:** The "Leftover" tasks (from `plan.md`) will be displayed in a separate, non-timeline list at the very top of the scroll view.
+- **Completed Tasks:** The "Done" group will be a simple list at the bottom, showing only the title and a checkmark for completed tasks. When a task is completed via the animation, it is removed from the timeline and added to this list.
+- **Overlapping Tasks:** The layout logic must handle tasks with overlapping times. When an overlap is detected, the cards will be rendered side-by-side, each taking up 50% of the available width to avoid visual collision.
 
 ### Step 3.3: Task & List Modals
-- **Task**: Create the modal screens for adding and editing tasks and lists.
-- **Screens**:
-    - `lib/screens/edit_task_screen.dart`.
-    - `lib/screens/add_list_screen.dart`.
-- **Details**: These will be full-screen dialogs or modal bottom sheets, containing the forms as described in the blueprint.
+_(Unchanged)_
 
 ---
 
-## Phase 4: Feature Implementation - Secondary Views
+## Phase 4 & 5: Secondary Views & AI
 
-### Step 4.1: Inbox Screen
-- **Task**: Build the master task list with filtering and sorting.
-- **Screen**: `lib/screens/inbox_screen.dart`.
-- **Logic**: Implement the filter/sort popover and the horizontal task list tabs.
-
-### Step 4.2: Calendar Screen
-- **Task**: Implement the monthly calendar view.
-- **Screen**: `lib/screens/calendar_screen.dart`.
-- **Package**: Use a package like `table_calendar` to simplify the calendar UI.
-- **Logic**: Display task indicators on dates and show a list of tasks for the selected day.
-
-### Step 4.3: Journal Feature
-- **Task**: Build the screens for the journal.
-- **Screens**:
-    - `lib/screens/journal_list_screen.dart`.
-    - `lib/screens/journal_detail_screen.dart`.
-    - `lib/screens/journal_new_screen.dart`.
-- **Widgets**: `lib/widgets/journal_card.dart`.
+_(These phases remain unchanged.)_
 
 ---
 
-## Phase 5: Settings & AI Integration
+## Phase 6: Finalization (Animation Choreography Revision)
 
-### Step 5.1: Settings Screens
-- **Task**: Implement the settings area.
-- **Screens**:
-    - `lib/screens/settings_screen.dart`.
-    - `lib/screens/appearance_settings_screen.dart`.
-    - `lib/screens/profile_settings_screen.dart`.
-- **Logic**: Connect the UI controls to the `ThemeProvider` to update the app's appearance in real-time.
+### Step 6.1: Polish & Animation Choreography
 
-### Step 5.2: AI & Task Scheduling
-- **Task**: Port the core algorithms and integrate the AI features.
-- **Files**:
-    - `lib/services/task_scheduler.dart`: Port the `autoScheduleTasks` algorithm from TypeScript to Dart.
-    - `lib/services/ai_service.dart`:
-        - Integrate the `firebase_ai` package.
-        - Implement the `generateAvatar` flow.
-        - (Optional) Implement `prioritize-tasks` and `smart-schedule-suggestion`.
-- **Integration**: Wire the "AI Plan" button on the "My Day" screen to the `autoScheduleTasks` function.
+This section is revised to be an explicit set of animation instructions.
 
----
+#### 6.1.1: Task Completion Animation Choreography
 
-## Phase 6: Finalization
+This is a multi-stage, ~500ms animation triggered when the `TaskCard` checkbox is tapped. It will be managed by an `AnimationController` within the `task_card.dart` widget.
 
-### Step 6.1: Polish & Animations
-- **Task**: Add animations and refine the user experience.
-- **Actions**:
-    - Animate the FAB speed dial.
-    - Add subtle animations to card appearances.
-    - Ensure smooth transitions between screens.
+1.  **Stage 1 (0-150ms): Checkbox Fill.** The circular checkbox border animates to fill with the app's primary theme color, and a checkmark icon fades in.
+2.  **Stage 2 (50-350ms): Title Strikethrough.** A strikethrough line animates across the `Task.title` text, drawing from left to right.
+3.  **Stage 3 (200-500ms): Coordinated Fade & Shrink.**
+    - The entire card's opacity is animated from 1.0 to 0.0.
+    - *Simultaneously*, the card's height is animated from its full height to 0.
+4.  **Stage 4 (Post-Animation): List Update.** Once the animation is complete, the parent `timeline_view.dart` will use an `AnimatedList` to smoothly animate the remaining tasks, closing the gap left by the removed item.
 
-### Step 6.2: Testing
-- **Task**: Write unit and widget tests for critical components.
-- **Focus Areas**:
-    - **Unit Tests**: `task_scheduler.dart`, state providers.
-    - **Widget Tests**: `TimelineItem`, `TaskCard`.
+#### 6.1.2: Drag & Drop Interaction Choreography
 
-### Step 6.3: Deployment
-- **Task**: Prepare the application for release.
-- **Actions**:
-    - Build for Android and iOS.
-    - Test on physical devices.
+This interaction allows re-scheduling of tasks directly on the timeline.
+
+1.  **Activation:** A long press on a `TaskCard` initiates the drag state. This interaction will be **programmatically disabled** if the `Task.isFixed` property from `plan.md` is `true`.
+2.  **Lift State:** On long press, the card's elevation (shadow) increases, and it may scale up slightly (e.g., to 1.05x size) to indicate it is "lifted."
+3.  **Drag State:** As the user drags the card vertically, its position updates in real-time. Other tasks in the list animate to make space for it.
+4.  **Drop State:** On release, the card animates smoothly into its new position, its elevation returns to normal, and its `Task.startTime` is updated in the application's state via the `TaskProvider`.
+
+### Step 6.2 & 6.3: Testing & Deployment
+_(Unchanged)_
